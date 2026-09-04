@@ -60,31 +60,30 @@ CREATE INDEX idx_valor_fecha ON Valor (Fecha DESC);
 
 -- =============================================================================
 -- DATOS INICIALES: Tabla Moneda
--- Variables BCRA obtenidas de la API pública del BCRA:
---   https://api.bcra.gob.ar/estadisticas/v3.0/monetarias
--- El campo "Clave" corresponde al idVariable de la API BCRA v3
+-- API utilizada: GET https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones/{Clave}
+-- El campo "Clave" corresponde al código ISO 4217 de moneda que acepta la API
 -- =============================================================================
 INSERT INTO Moneda (IDMoneda, Moneda, Clave) VALUES
 -- Orden: 1 - Dólar de los Estados Unidos de América
-(1,  'Dólar de los Estados Unidos de América',  '1'),
--- Orden: 2 - Peso Argentino (tipo de cambio de referencia BNA comprador)
-(2,  'Peso Argentino (referencia BNA)',          '315'),
+(1,  'Dólar de los Estados Unidos de América',  'USD'),
+-- Orden: 2 - Peso Argentino (referencia Com. A 3500 BCRA)
+(2,  'Peso Argentino (referencia BCRA)',         'ARS'),
 -- Orden: 3 - Real Brasileño de Brasil
-(3,  'Real Brasileño de Brasil',                 '39'),
+(3,  'Real Brasileño de Brasil',                 'BRL'),
 -- Orden: 4 - Euro (Zona Euro)
-(4,  'Euro (Zona Euro)',                         '32'),
+(4,  'Euro (Zona Euro)',                         'EUR'),
 -- Orden: 5 - Libra Esterlina (Reino Unido)
-(5,  'Libra Esterlina (Reino Unido)',             '33'),
+(5,  'Libra Esterlina (Reino Unido)',             'GBP'),
 -- Orden: 6 - Yen Japonés (Japón)
-(6,  'Yen Japonés (Japón)',                       '34'),
+(6,  'Yen Japonés (Japón)',                       'JPY'),
 -- Orden: 7 - Franco Suizo (Suiza)
-(7,  'Franco Suizo (Suiza)',                      '35'),
+(7,  'Franco Suizo (Suiza)',                      'CHF'),
 -- Orden: 8 - Dólar Canadiense (Canadá)
-(8,  'Dólar Canadiense (Canadá)',                 '40'),
+(8,  'Dólar Canadiense (Canadá)',                 'CAD'),
 -- Orden: 9 - Corona Sueca (Suecia)
-(9,  'Corona Sueca (Suecia)',                     '36'),
+(9,  'Corona Sueca (Suecia)',                     'SEK'),
 -- Orden: 10 - Dólar Australiano (Australia)
-(10, 'Dólar Australiano (Australia)',             '41');
+(10, 'Dólar Australiano (Australia)',             'AUD');
 
 -- =============================================================================
 -- DATOS INICIALES: Tabla Valor (últimos 10 días hábiles por moneda)
