@@ -41,9 +41,9 @@ firewall-cmd --reload
 
 # --- Instalar MariaDB Server ---
 echo "[5/7] Instalando MariaDB Server..."
-# RHEL 9.6 AppStream incluye MariaDB 10.5 en el módulo mariadb
-dnf module reset mariadb -y
-dnf module enable mariadb:10.5 -y
+# RHEL 9.6 AppStream incluye MariaDB 10.5 como paquete directo.
+# A diferencia de RHEL 8, en RHEL 9 NO existe el módulo DNF "mariadb:10.5";
+# los paquetes se instalan directamente desde el canal AppStream.
 dnf install -y mariadb-server mariadb
 
 systemctl enable --now mariadb
