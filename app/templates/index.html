@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotización de Moneda — BCRA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <h1>💱 Cotización de Moneda</h1>
+        <span class="subtitle">Consulta en tiempo real al Banco Central de la República Argentina</span>
+    </div>
+</header>
+
+<main class="layout">
+
+    <!-- =========================================================
+         PANEL IZQUIERDO: Lista de monedas disponibles
+         ========================================================= -->
+    <aside class="panel-monedas">
+        <h2>Monedas disponibles</h2>
+        <ul class="lista-monedas">
+            {% for m in monedas %}
+            <li class="{{ 'activa' if selected and selected.IDMoneda == m.IDMoneda else '' }}">
+                <a href="{{ url_for('detalle_moneda', id_moneda=m.IDMoneda) }}">
+                    <span class="nombre-moneda">{{ m.Moneda }}</span>
+                    <span class="clave-bcra">ID BCRA: {{ m.Clave }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </aside>
+
+    <!-- =========================================================
+         PANEL DERECHO: Cotizaciones de la moneda seleccionada
+         ========================================================= -->
+    <section class="panel-valores">
+        {% if not selected %}
+            <div class="bienvenida">
+                <div class="bienvenida-icon">📊</div>
+                <h2>Seleccioná una moneda</h2>
+                <p>Elegí una moneda del panel izquierdo para ver<br>
+                   su historial de cotizaciones según datos del BCRA.</p>
+            </div>
+        {% else %}
+            <div class="moneda-header">
+                <h2>{{ selected.Moneda }}</h2>
+                <span class="badge-bcra">Código BCRA: <strong>{{ selected.Clave }}</strong></span>
+            </div>
+
+            {% if valores %}
+            <div class="table-wrapper">
+                <table class="tabla-valores">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th class="col-valor">Cotización (ARS)</th>
+                            <th class="col-tendencia">Tendencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(valores|length) %}
+                        {% set v = valores[i] %}
+                        {% set prev = valores[i+1] if i+1 < valores|length else None %}
+                        <tr class="{{ 'hoy' if loop.first else '' }}">
+                            <td>
+                                {{ v.FechaFormateada }}
+                                {% if loop.first %}
+                                    <span class="badge-hoy">hoy</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-valor valor-num">
+                                $ {{ "%.4f"|format(v.Valor) }}
+                            </td>
+                            <td class="col-tendencia">
+                                {% if prev %}
+                                    {% if v.Valor > prev.Valor %}
+                                        <span class="up" title="Subió respecto al día anterior">▲</span>
+                                    {% elif v.Valor < prev.Valor %}
+                                        <span class="down" title="Bajó respecto al día anterior">▼</span>
+                                    {% else %}
+                                        <span class="flat" title="Sin variación">—</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="flat">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="update-info">
+                🔄 Los valores se actualizan automáticamente todos los días a las 18:00 hs.
+            </p>
+
+            {% else %}
+            <div class="sin-datos">
+                <p>⚠️ No hay cotizaciones registradas aún para esta moneda.</p>
+                <p>El servicio de actualización se ejecuta a las 18:00 hs.</p>
+            </div>
+            {% endif %}
+        {% endif %}
+    </section>
+
+</main>
+
+<footer>
+    <p>Datos provistos por la API pública del
+       <a href="https://www.bcra.gob.ar" target="_blank" rel="noopener">
+           Banco Central de la República Argentina (BCRA)
+       </a>
+    </p>
+</footer>
+
+</body>
+</html>

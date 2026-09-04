@@ -1,0 +1,24 @@
+# Cotización de Moneda — .gitignore
+
+# Entorno virtual Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Logs
+*.log
+/var/log/
+
+# Credenciales / env
+.env
+*.env
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*~
+
+# macOS
+.DS_Store

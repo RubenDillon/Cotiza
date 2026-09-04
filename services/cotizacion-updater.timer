@@ -1,0 +1,23 @@
+# =============================================================================
+# cotizacion-updater.timer
+# Timer systemd que dispara cotizacion-updater.service todos los días a las 18:00.
+# Instalar en: /etc/systemd/system/cotizacion-updater.timer
+# =============================================================================
+[Unit]
+Description=Cotización de Moneda — Timer diario a las 18:00 hs (hora local)
+Requires=cotizacion-updater.service
+
+[Timer]
+# Disparar todos los días a las 18:00 en hora local de la VM
+OnCalendar=*-*-* 18:00:00
+
+# Si la VM estaba apagada a las 18:00, ejecutar en el próximo arranque
+Persistent=true
+
+# Pequeña variación aleatoria para no sobrecargar la API (0-5 minutos)
+RandomizedDelaySec=300
+
+Unit=cotizacion-updater.service
+
+[Install]
+WantedBy=timers.target

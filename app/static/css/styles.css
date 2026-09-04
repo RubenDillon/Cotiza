@@ -1,0 +1,319 @@
+/* =============================================================================
+   styles.css — Cotización de Moneda
+   Paleta: fondo blanco, primario azul BCRA, tipografía limpia y legible
+   ============================================================================= */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --color-bg:         #f4f6f9;
+    --color-surface:    #ffffff;
+    --color-primary:    #1a4e8c;   /* Azul BCRA */
+    --color-primary-lt: #e8f0fb;
+    --color-accent:     #0d6e4f;   /* Verde cotización al alza */
+    --color-danger:     #c0392b;   /* Rojo cotización a la baja */
+    --color-muted:      #6b7280;
+    --color-border:     #dde1e7;
+    --color-hoy:        #fffbea;
+    --font-main:        'Segoe UI', system-ui, -apple-system, sans-serif;
+    --radius:           8px;
+    --shadow:           0 2px 8px rgba(0,0,0,.08);
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--color-bg);
+    color: #1f2937;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- Header ---- */
+header {
+    background-color: var(--color-primary);
+    color: #fff;
+    padding: 16px 32px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+
+.header-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -.3px;
+}
+
+.subtitle {
+    font-size: .9rem;
+    opacity: .85;
+}
+
+/* ---- Layout principal ---- */
+.layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    max-width: 1300px;
+    margin: 28px auto;
+    padding: 0 24px;
+    width: 100%;
+}
+
+/* ---- Panel izquierdo: lista de monedas ---- */
+.panel-monedas {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    align-self: start;
+    position: sticky;
+    top: 20px;
+}
+
+.panel-monedas h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--color-primary-lt);
+}
+
+.lista-monedas {
+    list-style: none;
+}
+
+.lista-monedas li {
+    border-radius: 6px;
+    margin-bottom: 4px;
+    transition: background .15s;
+}
+
+.lista-monedas li:hover {
+    background: var(--color-primary-lt);
+}
+
+.lista-monedas li.activa {
+    background: var(--color-primary);
+}
+
+.lista-monedas li.activa a {
+    color: #fff;
+}
+
+.lista-monedas li.activa .clave-bcra {
+    color: rgba(255,255,255,.75);
+}
+
+.lista-monedas a {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    text-decoration: none;
+    color: #1f2937;
+    border-radius: 6px;
+}
+
+.nombre-moneda {
+    font-weight: 500;
+    font-size: .9rem;
+}
+
+.clave-bcra {
+    font-size: .75rem;
+    color: var(--color-muted);
+    margin-top: 2px;
+}
+
+/* ---- Panel derecho: valores ---- */
+.panel-valores {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+    min-height: 400px;
+}
+
+/* Pantalla de bienvenida */
+.bienvenida {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 340px;
+    text-align: center;
+    color: var(--color-muted);
+    gap: 12px;
+}
+
+.bienvenida-icon {
+    font-size: 3rem;
+}
+
+.bienvenida h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.bienvenida p {
+    font-size: .95rem;
+    line-height: 1.7;
+}
+
+/* Encabezado de moneda seleccionada */
+.moneda-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.moneda-header h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.badge-bcra {
+    background: var(--color-primary-lt);
+    color: var(--color-primary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: .8rem;
+}
+
+/* Tabla de valores */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.tabla-valores {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .92rem;
+}
+
+.tabla-valores thead th {
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 600;
+    padding: 10px 16px;
+    text-align: left;
+    font-size: .85rem;
+    letter-spacing: .4px;
+}
+
+.tabla-valores thead th:first-child { border-radius: 6px 0 0 0; }
+.tabla-valores thead th:last-child  { border-radius: 0 6px 0 0; }
+
+.tabla-valores tbody tr {
+    border-bottom: 1px solid var(--color-border);
+    transition: background .12s;
+}
+
+.tabla-valores tbody tr:hover {
+    background: var(--color-primary-lt);
+}
+
+.tabla-valores tbody tr.hoy {
+    background: var(--color-hoy);
+    font-weight: 600;
+}
+
+.tabla-valores td {
+    padding: 10px 16px;
+    vertical-align: middle;
+}
+
+.col-valor   { text-align: right; }
+.col-tendencia { text-align: center; width: 80px; }
+
+.valor-num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .5px;
+}
+
+.badge-hoy {
+    background: var(--color-primary);
+    color: #fff;
+    font-size: .68rem;
+    padding: 2px 7px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+/* Indicadores de tendencia */
+.up   { color: var(--color-accent);  font-size: 1.1rem; }
+.down { color: var(--color-danger);  font-size: 1.1rem; }
+.flat { color: var(--color-muted);   font-size: 1rem; }
+
+/* Nota de actualización */
+.update-info {
+    margin-top: 18px;
+    font-size: .82rem;
+    color: var(--color-muted);
+    text-align: right;
+}
+
+/* Sin datos */
+.sin-datos {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--color-muted);
+}
+
+/* ---- Footer ---- */
+footer {
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+    padding: 14px;
+    font-size: .8rem;
+    color: var(--color-muted);
+    margin-top: 20px;
+}
+
+footer a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+    .layout {
+        grid-template-columns: 1fr;
+        padding: 0 12px;
+    }
+
+    .panel-monedas {
+        position: static;
+    }
+}

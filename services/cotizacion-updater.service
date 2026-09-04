@@ -1,0 +1,41 @@
+# =============================================================================
+# cotizacion-updater.service
+# Unidad systemd de tipo oneshot para ejecutar el actualizador de cotizaciones.
+# Instalar en: /etc/systemd/system/cotizacion-updater.service
+# =============================================================================
+[Unit]
+Description=Cotización de Moneda — Actualizador diario de cotizaciones BCRA
+Documentation=file:///opt/cotizacion/README.md
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=cotizacion
+Group=cotizacion
+
+# Entorno de trabajo
+WorkingDirectory=/opt/cotizacion
+
+# Variables de entorno de base de datos (editar contraseña según instalación)
+Environment="DB_HOST=localhost"
+Environment="DB_USER=app_cotizacion"
+Environment="DB_PASS=AppCotiz#2025!"
+Environment="DB_NAME=cotizacion_moneda"
+
+# Comando principal: ejecutar el actualizador con el venv instalado
+ExecStart=/opt/cotizacion/venv/bin/python /opt/cotizacion/services/daily_updater.py
+
+# Registro de stdout/stderr a journald (además del FileHandler en el script)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cotizacion-updater
+
+# Política de reintentos: si falla, reintentar hasta 3 veces con 5 min de espera
+Restart=on-failure
+RestartSec=300
+StartLimitBurst=3
+StartLimitIntervalSec=900
+
+[Install]
+WantedBy=multi-user.target
