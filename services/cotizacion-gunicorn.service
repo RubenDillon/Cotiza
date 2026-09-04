@@ -1,0 +1,46 @@
+# =============================================================================
+# cotizacion-gunicorn.service
+# Unidad systemd que mantiene la aplicación Flask corriendo con Gunicorn.
+# Instalar en: /etc/systemd/system/cotizacion-gunicorn.service
+# =============================================================================
+[Unit]
+Description=Cotización de Moneda — Gunicorn (servidor de aplicación Flask)
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=notify
+User=cotizacion
+Group=cotizacion
+WorkingDirectory=/opt/cotizacion/app
+
+# Variables de entorno de base de datos
+Environment="DB_HOST=localhost"
+Environment="DB_USER=app_cotizacion"
+Environment="DB_PASS=AppCotiz#2025!"
+Environment="DB_NAME=cotizacion_moneda"
+
+# Gunicorn: 3 workers, socket UNIX para comunicarse con Apache
+ExecStart=/opt/cotizacion/venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/run/cotizacion/gunicorn.sock \
+    --access-logfile /var/log/cotizacion/gunicorn_access.log \
+    --error-logfile  /var/log/cotizacion/gunicorn_error.log \
+    --log-level info \
+    --timeout 60 \
+    app:app
+
+ExecReload=/bin/kill -s HUP $MAINPID
+
+RuntimeDirectory=cotizacion
+RuntimeDirectoryMode=0755
+
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cotizacion-gunicorn
+
+[Install]
+WantedBy=multi-user.target
