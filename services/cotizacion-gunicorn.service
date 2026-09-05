@@ -24,6 +24,8 @@ Environment="DB_NAME=cotizacion_moneda"
 Environment="INSTANA_SERVICE_NAME=cotizacion-moneda-web"
 Environment="INSTANA_AGENT_HOST=localhost"
 Environment="INSTANA_AGENT_PORT=42699"
+Environment="AUTOWRAPT_BOOTSTRAP=instana"
+Environment="PYTHONPATH=/opt/cotizacion/venv/lib64/python3.9/site-packages:/opt/cotizacion/venv/lib/python3.9/site-packages"
 
 # Gunicorn: 3 workers, socket UNIX para comunicarse con Apache
 ExecStart=/opt/cotizacion/venv/bin/gunicorn \
