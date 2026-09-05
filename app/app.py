@@ -1,10 +1,11 @@
 """
 app.py — Aplicación Flask: Cotización de Moneda
-Instrumentación Instana: via AUTOWRAPT_BOOTSTRAP=instana en el service
-de systemd — NO se importa instana en el código para evitar doble init.
+Instrumentación Instana: import instana activa el sensor en el proceso
+master de Gunicorn (--preload). Los workers heredan la instrumentación.
 """
 
 import os
+import instana  # noqa: F401 — activa el sensor en el master (preload)
 from datetime import date
 from flask import Flask, render_template, abort
 import mysql.connector

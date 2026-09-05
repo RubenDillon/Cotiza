@@ -27,10 +27,13 @@ Environment="INSTANA_AGENT_PORT=42699"
 Environment="AUTOWRAPT_BOOTSTRAP=instana"
 Environment="PYTHONPATH=/opt/cotizacion/venv/lib64/python3.9/site-packages:/opt/cotizacion/venv/lib/python3.9/site-packages"
 
-# Gunicorn: 3 workers, socket UNIX para comunicarse con Apache
+# Gunicorn: 3 workers, preload + socket UNIX para comunicarse con Apache
+# --preload: carga la app en el master antes de forkear — Instana se
+#            inicializa una vez y los workers heredan la instrumentación
 ExecStart=/opt/cotizacion/venv/bin/gunicorn \
     --config /opt/cotizacion/app/gunicorn.conf.py \
     --workers 3 \
+    --preload \
     --bind unix:/run/cotizacion/gunicorn.sock \
     --access-logfile /var/log/cotizacion/gunicorn_access.log \
     --error-logfile  /var/log/cotizacion/gunicorn_error.log \
