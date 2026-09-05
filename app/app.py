@@ -1,10 +1,10 @@
 """
 app.py — Aplicación Flask: Cotización de Moneda
-Instrumentada con Instana SDK para trazas distribuidas y métricas.
+Instrumentación Instana: via AUTOWRAPT_BOOTSTRAP=instana en el service
+de systemd — NO se importa instana en el código para evitar doble init.
 """
 
 import os
-import instana                          # ← instrumentación automática de Flask
 from datetime import date
 from flask import Flask, render_template, abort
 import mysql.connector
@@ -22,9 +22,6 @@ DB_CONFIG = {
 }
 
 app = Flask(__name__)
-
-# Nombre del servicio que aparecerá en Instana
-os.environ.setdefault("INSTANA_SERVICE_NAME", "cotizacion-moneda-web")
 
 
 # ---------------------------------------------------------------------------

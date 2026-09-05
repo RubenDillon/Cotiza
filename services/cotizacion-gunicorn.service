@@ -29,6 +29,7 @@ Environment="PYTHONPATH=/opt/cotizacion/venv/lib64/python3.9/site-packages:/opt/
 
 # Gunicorn: 3 workers, socket UNIX para comunicarse con Apache
 ExecStart=/opt/cotizacion/venv/bin/gunicorn \
+    --config /opt/cotizacion/app/gunicorn.conf.py \
     --workers 3 \
     --bind unix:/run/cotizacion/gunicorn.sock \
     --access-logfile /var/log/cotizacion/gunicorn_access.log \
