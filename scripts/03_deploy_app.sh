@@ -93,21 +93,22 @@ setsebool -P httpd_read_user_content 1
 
 # --- 7. Configurar Apache como proxy reverso ---
 echo "[7/9] Configurando Apache (proxy reverso a Gunicorn)..."
-# Habilitar módulos necesarios de Apache (proxy y headers)
-dnf install -y mod_ssl --quiet 2>/dev/null || true
+# mod_proxy y mod_headers vienen incluidos en httpd de RHEL 9.
+# NO se instala mod_ssl: si el ssl.conf de una instalación previa existe sin
+# certificado, rompe Apache. TLS se configura por separado cuando sea necesario.
+
+# Si ssl.conf existe pero no tiene certificado, deshabilitarlo para evitar errores
+if [ -f /etc/httpd/conf.d/ssl.conf ]; then
+    if ! [ -f /etc/pki/tls/certs/localhost.crt ]; then
+        mv /etc/httpd/conf.d/ssl.conf /etc/httpd/conf.d/ssl.conf.disabled
+        echo "     → ssl.conf deshabilitado (sin certificado TLS disponible)."
+    fi
+fi
 
 # Copiar VirtualHost
 cp "${APP_DIR}/app/cotizacion.conf" /etc/httpd/conf.d/cotizacion.conf
 
-# Asegurar que los módulos proxy y headers estén cargados
-for mod in proxy proxy_http headers; do
-    if ! grep -r "LoadModule ${mod}_module" /etc/httpd/ &>/dev/null; then
-        echo "LoadModule ${mod}_module modules/mod_${mod}.so" \
-            >> /etc/httpd/conf.d/cotizacion.conf
-    fi
-done
-
-systemctl reload httpd
+systemctl restart httpd
 
 # --- 8. Instalar y habilitar los servicios systemd ---
 echo "[8/9] Instalando servicios systemd..."
