@@ -33,8 +33,10 @@ com.instana.plugin.mysql:
       database: 'cotizacion_moneda'
 
 # --- Python (Flask + Gunicorn) ---
-# El agente detecta automáticamente procesos Python.
-# La instrumentación se hace via instana SDK en el código (ver app.py)
+# Solo instrumentar procesos Python del venv de la aplicación.
+# Los procesos del sistema RHEL (firewalld, tuned, fail2ban, rhsm-service)
+# usan /usr/bin/python3 y deben ser excluidos para evitar errores
+# python_sensor_not_installed.
 com.instana.plugin.python:
   enabled: true
 
@@ -46,9 +48,16 @@ com.instana.tracing:
     - 'x-forwarded-for'
 
 # --- Métricas de procesos ---
+# Solo monitorear los procesos de la aplicación, excluir los del sistema RHEL
 com.instana.plugin.process:
   processes:
     - 'httpd'
     - 'gunicorn'
-    - 'python3'
     - 'mariadbd'
+  # Excluir procesos Python del sistema RHEL que no tienen el sensor instana
+  ignore-processes:
+    - 'firewalld'
+    - 'tuned'
+    - 'tuned-ppd'
+    - 'fail2ban-server'
+    - 'rhsm-service'
