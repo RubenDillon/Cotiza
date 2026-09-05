@@ -7,13 +7,12 @@ import os
 
 # Worker post-fork: inicializar Instana en cada worker
 def post_fork(server, worker):
-    # Solo inicializar si AUTOWRAPT_BOOTSTRAP está configurado
-    if os.environ.get("AUTOWRAPT_BOOTSTRAP") == "instana":
-        try:
-            import instana
-            instana.initialize()
-        except Exception as e:
-            server.log.warning("Instana init warning: %s", e)
+    # En instana >= 2.x el simple import activa la instrumentación automática.
+    # No existe instana.initialize() — el módulo se auto-inicializa al importarse.
+    try:
+        import instana  # noqa: F401 — el import activa el sensor
+    except ImportError as e:
+        server.log.warning("Instana no disponible en este worker: %s", e)
 
 
 def on_starting(server):
