@@ -1,0 +1,54 @@
+# =============================================================================
+# configuration.yaml — Configuración del agente Instana para la VM RHEL 9.6
+# Ubicación en la VM: /opt/instana/agent/etc/instana/configuration.yaml
+# =============================================================================
+
+# --- Identificación del host ---
+host:
+  tags:
+    - app:cotizacion-moneda
+    - env:production
+    - stack:lamp
+    - os:rhel9
+
+# --- Zona del host (aparece en Instana como agrupación) ---
+com.instana.plugin.host:
+  tags:
+    - 'cotizacion-moneda'
+
+# --- Apache HTTP Server ---
+com.instana.plugin.apachehttpd:
+  enabled: true
+  # Habilitar mod_status en Apache para que Instana lea métricas
+  # (ver instrucciones en README de Instana)
+
+# --- MariaDB / MySQL ---
+com.instana.plugin.mysql:
+  enabled: true
+  instances:
+    - host: 'localhost'
+      port: 3306
+      user: 'app_cotizacion'
+      password: 'AppCotiz#2025!'
+      database: 'cotizacion_moneda'
+
+# --- Python (Flask + Gunicorn) ---
+# El agente detecta automáticamente procesos Python.
+# La instrumentación se hace via instana SDK en el código (ver app.py)
+com.instana.plugin.python:
+  enabled: true
+
+# --- Tracing distribuido ---
+com.instana.tracing:
+  enabled: true
+  extra-http-headers:
+    - 'x-request-id'
+    - 'x-forwarded-for'
+
+# --- Métricas de procesos ---
+com.instana.plugin.process:
+  processes:
+    - 'httpd'
+    - 'gunicorn'
+    - 'python3'
+    - 'mariadbd'

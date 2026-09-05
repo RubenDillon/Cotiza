@@ -20,6 +20,11 @@ Environment="DB_USER=app_cotizacion"
 Environment="DB_PASS=AppCotiz#2025!"
 Environment="DB_NAME=cotizacion_moneda"
 
+# Variables de entorno para Instana SDK
+Environment="INSTANA_SERVICE_NAME=cotizacion-moneda-web"
+Environment="INSTANA_AGENT_HOST=localhost"
+Environment="INSTANA_AGENT_PORT=42699"
+
 # Gunicorn: 3 workers, socket UNIX para comunicarse con Apache
 ExecStart=/opt/cotizacion/venv/bin/gunicorn \
     --workers 3 \

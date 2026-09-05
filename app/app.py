@@ -1,11 +1,10 @@
 """
 app.py — Aplicación Flask: Cotización de Moneda
-Descripción: Frontend web que muestra las monedas disponibles y sus
-             cotizaciones históricas consultadas al BCRA.
-Entorno:     Python 3.11 / Flask / MariaDB (RHEL 9.6)
+Instrumentada con Instana SDK para trazas distribuidas y métricas.
 """
 
 import os
+import instana                          # ← instrumentación automática de Flask
 from datetime import date
 from flask import Flask, render_template, abort
 import mysql.connector
@@ -23,6 +22,9 @@ DB_CONFIG = {
 }
 
 app = Flask(__name__)
+
+# Nombre del servicio que aparecerá en Instana
+os.environ.setdefault("INSTANA_SERVICE_NAME", "cotizacion-moneda-web")
 
 
 # ---------------------------------------------------------------------------
@@ -53,8 +55,7 @@ def fetch_all(query: str, params: tuple = ()) -> list[dict]:
 @app.route("/")
 def index():
     """
-    Página principal: lista de monedas y, si se pasa ?moneda=<id>,
-    los valores históricos de esa moneda en el panel derecho.
+    Página principal: lista de monedas disponibles.
     """
     monedas = fetch_all(
         "SELECT IDMoneda, Moneda, Clave FROM Moneda ORDER BY IDMoneda"
@@ -65,10 +66,8 @@ def index():
 @app.route("/moneda/<int:id_moneda>")
 def detalle_moneda(id_moneda: int):
     """
-    Detalle de una moneda: muestra nombre, clave BCRA y sus
-    últimas cotizaciones ordenadas por fecha descendente.
+    Detalle de una moneda: cotizaciones históricas.
     """
-    # Traer la moneda seleccionada
     rows = fetch_all(
         "SELECT IDMoneda, Moneda, Clave FROM Moneda WHERE IDMoneda = %s",
         (id_moneda,),
@@ -78,7 +77,6 @@ def detalle_moneda(id_moneda: int):
 
     selected = rows[0]
 
-    # Traer todos los valores históricos disponibles para esa moneda
     valores = fetch_all(
         """
         SELECT
@@ -92,7 +90,6 @@ def detalle_moneda(id_moneda: int):
         (id_moneda,),
     )
 
-    # Todas las monedas para el panel izquierdo
     monedas = fetch_all(
         "SELECT IDMoneda, Moneda, Clave FROM Moneda ORDER BY IDMoneda"
     )
@@ -106,7 +103,21 @@ def detalle_moneda(id_moneda: int):
 
 
 # ---------------------------------------------------------------------------
-# Punto de entrada (desarrollo / wsgi)
+# Health check endpoint (usado por Instana para liveness)
+# ---------------------------------------------------------------------------
+@app.route("/health")
+def health():
+    """Endpoint de health check para Instana."""
+    try:
+        conn = get_connection()
+        conn.close()
+        return {"status": "ok", "db": "connected"}, 200
+    except DBError:
+        return {"status": "error", "db": "disconnected"}, 503
+
+
+# ---------------------------------------------------------------------------
+# Punto de entrada
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
