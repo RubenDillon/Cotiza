@@ -46,11 +46,13 @@ cp "${SRC_DIR}/app/gunicorn.conf.py"                "${APP_DIR}/app/gunicorn.con
 cp "${SRC_DIR}/app/cotizacion.conf"                 "${APP_DIR}/app/cotizacion.conf"
 cp "${SRC_DIR}/app/templates/index.html"            "${APP_DIR}/app/templates/index.html"
 cp "${SRC_DIR}/app/static/css/styles.css"           "${APP_DIR}/app/static/css/styles.css"
-cp "${SRC_DIR}/services/daily_updater.py"           "${APP_DIR}/services/daily_updater.py"
-cp "${SRC_DIR}/services/cotizacion-updater.service" "${APP_DIR}/services/cotizacion-updater.service"
-cp "${SRC_DIR}/services/cotizacion-updater.timer"   "${APP_DIR}/services/cotizacion-updater.timer"
+cp "${SRC_DIR}/services/daily_updater.py"            "${APP_DIR}/services/daily_updater.py"
+cp "${SRC_DIR}/services/traffic_simulator.py"        "${APP_DIR}/services/traffic_simulator.py"
+cp "${SRC_DIR}/services/cotizacion-updater.service"  "${APP_DIR}/services/cotizacion-updater.service"
+cp "${SRC_DIR}/services/cotizacion-updater.timer"    "${APP_DIR}/services/cotizacion-updater.timer"
 cp "${SRC_DIR}/services/cotizacion-gunicorn.service" "${APP_DIR}/services/cotizacion-gunicorn.service"
-cp "${SRC_DIR}/db/02_schema_and_seed.sql"           "${APP_DIR}/db/02_schema_and_seed.sql"
+cp "${SRC_DIR}/services/cotizacion-traffic.service"  "${APP_DIR}/services/cotizacion-traffic.service"
+cp "${SRC_DIR}/db/02_schema_and_seed.sql"            "${APP_DIR}/db/02_schema_and_seed.sql"
 
 # --- 4. Verificar / completar dependencias Python en el venv ---
 echo "[4/9] Verificando dependencias Python en el venv..."
@@ -143,8 +145,10 @@ done
 # Servicio Gunicorn
 cp "${APP_DIR}/services/cotizacion-gunicorn.service" /etc/systemd/system/
 # Timer actualizador de cotizaciones
-cp "${APP_DIR}/services/cotizacion-updater.service" /etc/systemd/system/
-cp "${APP_DIR}/services/cotizacion-updater.timer"   /etc/systemd/system/
+cp "${APP_DIR}/services/cotizacion-updater.service"  /etc/systemd/system/
+cp "${APP_DIR}/services/cotizacion-updater.timer"    /etc/systemd/system/
+# Simulador de tráfico
+cp "${APP_DIR}/services/cotizacion-traffic.service"  /etc/systemd/system/
 
 systemctl daemon-reload
 
@@ -160,6 +164,9 @@ echo "     ✔ cotizacion-gunicorn.service habilitado y corriendo."
 
 systemctl enable --now cotizacion-updater.timer
 echo "     ✔ cotizacion-updater.timer habilitado (18:00 hs diario)."
+
+systemctl enable --now cotizacion-traffic.service
+echo "     ✔ cotizacion-traffic.service habilitado (~10 req/min 24x7)."
 
 # --- 9. Cargar schema y datos en MariaDB ---
 echo "[9/9] Cargando schema y datos en MariaDB..."

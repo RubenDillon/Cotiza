@@ -1,0 +1,36 @@
+# =============================================================================
+# cotizacion-traffic.service
+# Simulador de tráfico para la aplicación Cotización de Moneda.
+# Genera ~10 requests/minuto 24x7 simulando usuarios reales navegando
+# la lista de monedas y revisando cotizaciones históricas.
+# Instalar en: /etc/systemd/system/cotizacion-traffic.service
+# =============================================================================
+[Unit]
+Description=Cotización de Moneda — Simulador de tráfico (10 req/min)
+After=network.target cotizacion-gunicorn.service httpd.service
+Requires=cotizacion-gunicorn.service
+
+[Service]
+Type=simple
+User=cotizacion
+Group=cotizacion
+WorkingDirectory=/opt/cotizacion/services
+
+# Usa el mismo venv de la aplicación (python3.11, sin dependencias extra)
+ExecStart=/opt/cotizacion/venv/bin/python3 /opt/cotizacion/services/traffic_simulator.py
+
+# HOME=/tmp necesario porque cotizacion no tiene home directory
+Environment="HOME=/tmp"
+Environment="TMPDIR=/tmp"
+# Excluir del sensor Python de Instana (no es la app, es el generador de carga)
+Environment="INSTANA_IGNORE=true"
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cotizacion-traffic
+
+[Install]
+WantedBy=multi-user.target
