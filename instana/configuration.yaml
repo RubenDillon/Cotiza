@@ -1,6 +1,7 @@
 # =============================================================================
 # configuration.yaml — Configuración del agente Instana para la VM RHEL 9.6
 # Ubicación en la VM: /opt/instana/agent/etc/instana/configuration.yaml
+# Sintaxis validada contra configuration.yaml.template del agente instalado
 # =============================================================================
 
 # --- Identificación y tags del host ---
@@ -11,39 +12,28 @@ com.instana.plugin.host:
     - 'stack:lamp'
     - 'os:rhel9'
 
-# --- Apache HTTP Server ---
-# mod_status habilitado en /server-status (configurado en instana-status.conf)
-com.instana.plugin.apachehttpd:
-  enabled: true
-
-# --- MariaDB ---
-# enableSsl: false es obligatorio cuando MariaDB no tiene SSL configurado.
-# Sin este parámetro el sensor intenta conectar con SSL y falla con:
-# "Database connection is not established. Please check SSL configuration"
-com.instana.plugin.mariadb:
-  enabled: true
-  instances:
-    - host: 'localhost'
-      port: 3306
-      user: 'app_cotizacion'
-      password: 'AppCotiz#2025!'
-      enableSsl: false
-
-# --- Procesos a monitorear y excluir ---
-# Se listan explícitamente los procesos de la app y se excluyen los del
-# sistema RHEL que usan /usr/bin/python3 sin sensor Instana instalado.
-com.instana.plugin.process:
+# --- Ignorar procesos del sistema RHEL que no tienen sensor Instana ---
+# Sintaxis exacta del template: com.instana.ignore > processes
+# Elimina errores python_sensor_not_installed de firewalld, tuned, fail2ban, rhsm
+com.instana.ignore:
   processes:
-    - 'httpd'
-    - 'gunicorn'
-    - 'mariadbd'
-  # Excluir servicios del sistema RHEL que generan python_sensor_not_installed
-  ignore-processes:
     - 'firewalld'
     - 'tuned'
     - 'tuned-ppd'
     - 'fail2ban-server'
     - 'rhsm-service'
+
+# --- Apache HTTP Server ---
+# mod_status habilitado en /server-status (ver instana-status.conf)
+com.instana.plugin.apachehttpd:
+  enabled: true
+
+# --- MariaDB ---
+# Sintaxis exacta del template: solo user y password.
+# El agente detecta host/puerto automáticamente desde el proceso mariadbd.
+com.instana.plugin.mariadb:
+  user: 'app_cotizacion'
+  password: 'AppCotiz#2025!'
 
 # --- Tracing distribuido ---
 com.instana.tracing:
