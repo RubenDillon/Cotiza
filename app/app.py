@@ -104,9 +104,9 @@ def detalle_moneda(id_moneda: int):
         valores = fetch_all(
             """
             SELECT
-                DATE_FORMAT(Fecha, '%%d/%%m/%%Y') AS FechaFormateada,
+                DATE_FORMAT(Fecha, '%d/%m/%Y') AS FechaFormateada,
                 Fecha,
-                ROUND(Valor, 4)                   AS Valor
+                ROUND(Valor, 4)                AS Valor
             FROM  Valor
             WHERE IDMoneda = %s
             ORDER BY Fecha DESC
