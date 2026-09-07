@@ -1,7 +1,6 @@
 # =============================================================================
 # configuration.yaml — Configuración del agente Instana para la VM RHEL 9.6
 # Ubicación en la VM: /opt/instana/agent/etc/instana/configuration.yaml
-# Sintaxis validada contra configuration.yaml.template del agente instalado
 # =============================================================================
 
 # --- Identificación y tags del host ---
@@ -12,28 +11,20 @@ com.instana.plugin.host:
     - 'stack:lamp'
     - 'os:rhel9'
 
-# --- Ignorar procesos del sistema RHEL que no tienen sensor Instana ---
-# Sintaxis exacta del template: com.instana.ignore > processes
-# Elimina errores python_sensor_not_installed de firewalld, tuned, fail2ban, rhsm
-com.instana.ignore:
-  processes:
-    - 'firewalld'
-    - 'tuned'
-    - 'tuned-ppd'
-    - 'fail2ban-server'
-    - 'rhsm-service'
-
 # --- Apache HTTP Server ---
-# mod_status habilitado en /server-status (ver instana-status.conf)
+# El agente accede a /server-status via 127.0.0.1 — el VirtualHost debe
+# responder en esa IP. Se especifica la URL exacta con auto para parseo.
 com.instana.plugin.apachehttpd:
   enabled: true
+  status_url: 'http://127.0.0.1/server-status?auto'
 
 # --- MariaDB ---
-# Sintaxis exacta del template: solo user y password.
-# El agente detecta host/puerto automáticamente desde el proceso mariadbd.
+# sslTrustStore vacío deshabilita SSL efectivamente.
+# El agente detecta el proceso mariadbd automáticamente.
 com.instana.plugin.mariadb:
   user: 'app_cotizacion'
   password: 'AppCotiz#2025!'
+  poll_rate: 10
 
 # --- Tracing distribuido ---
 com.instana.tracing:

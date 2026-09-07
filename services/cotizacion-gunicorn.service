@@ -24,9 +24,9 @@ Environment="DB_NAME=cotizacion_moneda"
 Environment="INSTANA_SERVICE_NAME=cotizacion-moneda-web"
 Environment="INSTANA_AGENT_HOST=localhost"
 Environment="INSTANA_AGENT_PORT=42699"
-# AUTOWRAPT_BOOTSTRAP eliminado: con --preload interfiere con el fork de Gunicorn.
-# El import directo de instana en app.py (cargado en el master via --preload)
-# es suficiente para que el agente detecte y registre el proceso correctamente.
+Environment="INSTANA_MONITORING=true"
+# Directorio temporal con permisos para que el sensor Python escriba su socket
+Environment="TMPDIR=/tmp"
 
 # Gunicorn: 3 workers, preload + socket UNIX para comunicarse con Apache
 # --preload: carga la app en el master antes de forkear — Instana se
