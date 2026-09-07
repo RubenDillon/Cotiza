@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicio no disponible — Cotización de Moneda</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .error-container {
+            max-width: 600px;
+            margin: 80px auto;
+            text-align: center;
+            padding: 2rem;
+        }
+        .error-icon { font-size: 4rem; margin-bottom: 1rem; }
+        .error-title { font-size: 1.6rem; font-weight: 600; color: #1f2328; margin-bottom: 0.5rem; }
+        .error-subtitle { color: #57606a; margin-bottom: 2rem; line-height: 1.6; }
+        .error-detail {
+            background: #f7f8fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #57606a;
+            margin-bottom: 2rem;
+        }
+        .error-detail strong { color: #1f2328; }
+        .btn-retry {
+            display: inline-block;
+            padding: 0.6rem 1.5rem;
+            background: #3b82d4;
+            color: #fff;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        .btn-retry:hover { background: #2563b0; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <h1>💱 Cotización de Moneda</h1>
+        <span class="subtitle">Banco Central de la República Argentina</span>
+    </div>
+</header>
+
+<div class="error-container">
+    <div class="error-icon">🗄️</div>
+    <p class="error-title">Base de datos no disponible</p>
+    <p class="error-subtitle">
+        La aplicación no puede conectarse a la base de datos en este momento.<br>
+        El servicio se restaurará automáticamente en breve.
+    </p>
+    <div class="error-detail">
+        <strong>¿Qué ocurrió?</strong><br>
+        El servidor de base de datos (MariaDB) no está respondiendo en
+        <code>localhost:3306</code>. Esto puede deberse a un reinicio
+        programado, una actualización o una falla temporal del servicio.
+        <br><br>
+        <strong>¿Qué hacer?</strong><br>
+        Intentá recargar la página en unos segundos. Si el problema persiste,
+        contactá al administrador del sistema.
+    </div>
+    <a class="btn-retry" href="/">🔄 Reintentar</a>
+</div>
+
+<footer>
+    <p>Datos provistos por la API pública del
+       <a href="https://www.bcra.gob.ar" target="_blank" rel="noopener">
+           Banco Central de la República Argentina (BCRA)
+       </a>
+    </p>
+</footer>
+
+</body>
+</html>
