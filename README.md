@@ -1,100 +1,108 @@
 # Cotización de Moneda — Guía de instalación y uso
-## Sistema operativo: Red Hat Enterprise Linux 9.6 (RHEL) — Stack LAMP oficial
+## Sistema operativo: Red Hat Enterprise Linux 9.6 — Stack LAMP oficial Red Hat
 
 ---
 
 ## Arquitectura general
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│              VM RHEL 9.6 (LAMP oficial Red Hat)             │
-│                                                             │
-│  ┌────────────┐  Proxy    ┌──────────────────────────────┐  │
-│  │  Apache    │──────────▶│  Gunicorn (3 workers)        │  │
-│  │  httpd     │  UNIX     │  /run/cotizacion/gunicorn.sock│  │
-│  │  :80       │  socket   │                              │  │
-│  └─────┬──────┘           └──────────────┬───────────────┘  │
-│        │ /static directo                  │  Flask app.py    │
-│        │                                  │  mysql-connector │
-│  ┌─────▼──────────────┐                   ▼                 │
-│  │  /opt/cotizacion/  │      ┌────────────────────────┐    │
-│  │  app/static/       │      │  MariaDB 10.5           │    │
-│  └────────────────────┘      │  cotizacion_moneda      │    │
-│                               │  ├── Moneda (catálogo) │    │
-│  ┌──────────────────────┐     │  └── Valor (histórico) │    │
-│  │  systemd Timer       │     └────────────────────────┘    │
-│  │  18:00 hs diario     │                                   │
-│  │  daily_updater.py    │──── requests (HTTPS) ────────▶   │
-│  └──────────────────────┘     API BCRA (externa)            │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  Instana Agent  ←→  ingress-orange-saas.instana.io   │   │
-│  │  Host · MariaDb · Httpd · Process · PhpFpm · Gunicorn│   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│              VM RHEL 9.6 (LAMP oficial Red Hat)              │
+│                                                              │
+│  ┌────────────┐  Proxy    ┌───────────────────────────────┐  │
+│  │  Apache    │──────────▶│  Gunicorn (3 workers)         │  │
+│  │  httpd :80 │  UNIX     │  /run/cotizacion/gunicorn.sock│  │
+│  └─────┬──────┘  socket   └──────────────┬────────────────┘  │
+│        │ /static                          │  Flask + instana  │
+│        ▼                                  ▼                   │
+│  /opt/cotizacion/          ┌─────────────────────────────┐   │
+│  app/static/               │  MariaDB 10.5               │   │
+│                            │  cotizacion_moneda          │   │
+│  ┌───────────────────┐     │  ├── Moneda (10 monedas)    │   │
+│  │  systemd Timer    │     │  └── Valor (histórico)      │   │
+│  │  18:00 hs diario  │     └─────────────────────────────┘   │
+│  │  daily_updater.py │──── HTTPS ──▶ API BCRA               │
+│  └───────────────────┘                                        │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Instana Agent ←→ ingress-orange-saas.instana.io:443   │  │
+│  │  Host · MariaDB · Apache · PHP · Python (3 workers)    │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Instalación completa desde cero — 3 comandos
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/RubenDillon/Cotiza.git
+cd Cotiza/cotizacion-moneda
+
+# 2. Instalar stack LAMP + Python 3.11 + venv con todas las dependencias
+sudo bash scripts/01_install_lamp.sh
+
+# 3. Desplegar la aplicación + servicios systemd + Instana drops-ins
+sudo bash scripts/03_deploy_app.sh
+
+# 4. Instalar y configurar el agente Instana (opcional)
+sudo bash scripts/05_setup_instana.sh
 ```
 
 ---
 
 ## Requisitos previos
 
-| Requisito                  | Detalle                                                  |
-|----------------------------|----------------------------------------------------------|
-| RHEL 9.6 instalado         | Suscripción RHSM activa                                  |
-| Acceso a internet          | Para API BCRA y repos Red Hat                            |
-| Usuario root / sudo        | Para instalación de paquetes y servicios                 |
-| Repositorios habilitados   | `rhel-9-for-x86_64-baseos-rpms` + `appstream-rpms`      |
-| **Sin EPEL ni CentOS**     | Sólo paquetes oficiales Red Hat                          |
+| Requisito                | Detalle                                                      |
+|--------------------------|--------------------------------------------------------------|
+| RHEL 9.6 instalado       | Suscripción RHSM activa                                      |
+| Acceso a internet        | Para API BCRA, repos Red Hat e instalador Instana            |
+| Usuario root / sudo      | Para instalación de paquetes y servicios                     |
+| Repos habilitados        | `rhel-9-for-x86_64-baseos-rpms` + `appstream-rpms`          |
+| **Sin EPEL ni CentOS**   | Solo paquetes oficiales Red Hat                              |
 
 ---
 
-## Instalación en una VM limpia — 2 comandos
+## Qué hace cada script
 
-```bash
-sudo bash scripts/01_install_lamp.sh
-sudo bash scripts/03_deploy_app.sh
-```
+### `01_install_lamp.sh` — Stack LAMP + Python 3.11
 
----
+1. Verifica suscripción RHSM
+2. Habilita repos oficiales Red Hat
+3. Instala Apache httpd + habilita firewall
+4. Instala MariaDB 10.5 + securiza la instalación
+5. Instala PHP 8.2 (módulo AppStream)
+6. Instala **`python3.11`** (no `python3` — en RHEL 9 apunta a 3.9)
+7. Crea usuario `cotizacion` + venv `/opt/cotizacion/venv` con:
+   - `flask`, `mysql-connector-python`, `requests`, `gunicorn`, **`instana`**
 
-## Paso a paso de instalación
+> **Nota crítica:** El sensor Python de Instana requiere Python 3.10+. En RHEL 9,
+> `python3` apunta a Python 3.9 (sistema base). Por eso se usa `python3.11`
+> explícitamente para el venv.
 
-### 1 — Instalar stack LAMP
+### `03_deploy_app.sh` — Despliegue completo
 
-```bash
-sudo bash scripts/01_install_lamp.sh
-```
+1. Crea usuario `cotizacion` (si no existe)
+2. Crea estructura de directorios
+3. Copia archivos de la aplicación
+4. Verifica/completa dependencias Python (incluye `instana`)
+5. Configura permisos y SELinux
+6. Configura Apache: VirtualHost proxy reverso + `mod_status` para Instana
+7. Crea **drop-ins systemd** con `INSTANA_IGNORE=true` para los servicios del
+   sistema RHEL que usan `/usr/bin/python3` (firewalld, tuned, tuned-ppd,
+   fail2ban, rhsm) — evita errores `python_sensor_not_installed` en Instana
+8. Instala y habilita: `cotizacion-gunicorn.service` + `cotizacion-updater.timer`
+9. Carga schema SQL + ejecuta primera actualización desde la API BCRA
 
-Instala y habilita:
-- **Apache httpd** (canal AppStream oficial)
-- **MariaDB 10.5** (paquete directo AppStream — sin módulo DNF, eso era RHEL 8)
-- **PHP 8.2** (módulo `php:8.2` del AppStream oficial)
-- **Python 3.11** (AppStream oficial)
-- **Gunicorn** instalado en entorno virtual `/opt/cotizacion/venv`
+### `05_setup_instana.sh` — Agente Instana
 
-### 2 — Desplegar la aplicación
-
-```bash
-sudo bash scripts/03_deploy_app.sh
-```
-
-Este script realiza 9 pasos:
-1. Crea el usuario de sistema `cotizacion` (sin login)
-2. Crea la estructura de directorios en `/opt/cotizacion/`
-3. Copia todos los archivos de la aplicación
-4. Instala dependencias Python (Flask, Gunicorn, mysql-connector, requests)
-5. Configura permisos correctos (directorios `755`, archivos `644`)
-6. Configura SELinux (contextos y booleanos para Apache proxy)
-7. Instala el VirtualHost de Apache como **proxy reverso a Gunicorn**
-8. Instala y habilita los servicios systemd (Gunicorn + timer BCRA)
-9. Carga el schema SQL y datos iniciales en MariaDB
-
-### 3 — Instalar Instana (opcional — observabilidad)
-
-```bash
-sudo bash scripts/05_setup_instana.sh
-sudo bash scripts/06_fix_instana_python.sh
-```
+1. Instala el agente Instana si no está presente (one-liner oficial IBM)
+2. Aplica `instana/configuration.yaml` (plugins MariaDB + Apache + host tags)
+3. Verifica SDK `instana` en el venv
+4. Verifica/crea drop-ins `INSTANA_IGNORE` para servicios del sistema
+5. Reinicia todos los servicios
+6. Verifica el estado final
 
 ---
 
@@ -103,49 +111,43 @@ sudo bash scripts/06_fix_instana_python.sh
 ```
 cotizacion-moneda/
 ├── scripts/
-│   ├── 01_install_lamp.sh              ← Instalación LAMP (RHEL 9.6 oficial)
-│   ├── 03_deploy_app.sh                ← Despliegue completo (9 pasos)
-│   ├── 05_setup_instana.sh             ← Instana SDK + configuración del agente
-│   └── 06_fix_instana_python.sh        ← Drop-ins systemd: INSTANA_IGNORE para
-│                                          servicios Python del sistema RHEL
+│   ├── 01_install_lamp.sh       ← LAMP + Python 3.11 + venv con instana
+│   ├── 03_deploy_app.sh         ← App + Apache + systemd + drop-ins Instana
+│   └── 05_setup_instana.sh      ← Agente Instana + configuration.yaml
 ├── db/
-│   ├── 02_schema_and_seed.sql          ← Schema + 10 monedas + 10 días de valores
-│   └── 04_fix_claves_iso.sql           ← Migración de claves numéricas a ISO 4217
+│   ├── 02_schema_and_seed.sql   ← Schema + 10 monedas + 10 días de valores
+│   └── 04_fix_claves_iso.sql    ← Migración (referencia histórica)
 ├── app/
-│   ├── app.py                          ← Aplicación Flask (frontend + import instana)
-│   ├── wsgi.py                         ← Punto de entrada WSGI
-│   ├── gunicorn.conf.py                ← Configuración Gunicorn (hooks Instana)
-│   ├── cotizacion.conf                 ← VirtualHost Apache (proxy reverso)
-│   ├── instana-status.conf             ← mod_status: acceso local para Instana
-│   ├── templates/
-│   │   └── index.html                  ← Template Jinja2 (layout 2 paneles)
-│   └── static/css/
-│       └── styles.css                  ← Estilos (paleta BCRA azul)
+│   ├── app.py                   ← Flask app (import instana al inicio)
+│   ├── wsgi.py                  ← Punto de entrada WSGI
+│   ├── gunicorn.conf.py         ← Config Gunicorn (sin --preload)
+│   ├── cotizacion.conf          ← VirtualHost Apache proxy reverso
+│   ├── templates/index.html     ← Template Jinja2 (layout 2 paneles)
+│   └── static/css/styles.css   ← Estilos (paleta azul BCRA)
 ├── services/
-│   ├── daily_updater.py                ← Script Python: consulta BCRA y guarda valores
-│   ├── cotizacion-gunicorn.service     ← Servicio systemd Gunicorn (3 workers, --preload)
-│   ├── cotizacion-updater.service      ← Unidad systemd oneshot (actualiza cotizaciones)
-│   └── cotizacion-updater.timer        ← Timer systemd (18:00 hs diario, Persistent=true)
+│   ├── daily_updater.py         ← Actualiza cotizaciones desde API BCRA
+│   ├── cotizacion-gunicorn.service  ← Gunicorn (HOME=/tmp, 3 workers)
+│   ├── cotizacion-updater.service   ← oneshot: ejecuta daily_updater.py
+│   └── cotizacion-updater.timer     ← Timer: 18:00 hs, Persistent=true
 └── instana/
-    └── configuration.yaml             ← Plugin MariaDB + status_url Apache + host tags
+    └── configuration.yaml       ← Plugin MariaDB + Apache status_url + tags
 ```
 
 ---
 
-## Arquitectura de servidores
-
-La aplicación **no usa mod_wsgi**. El stack de producción es:
+## Arquitectura del servidor web
 
 ```
-Browser → Apache :80 → (UNIX socket) → Gunicorn → Flask
-                  └──→ /static → archivos directos
+Browser → Apache :80 → (UNIX socket) → Gunicorn (3 workers) → Flask
+                   └──→ /static → archivos estáticos directos
 ```
 
-- **Apache** actúa como proxy reverso usando `mod_proxy` (incluido en RHEL 9)
-- **Gunicorn** corre como servicio systemd con 3 workers, socket UNIX en
-  `/run/cotizacion/gunicorn.sock`
-- El socket UNIX es creado automáticamente por systemd (`RuntimeDirectory=cotizacion`)
-- No se usa el puerto 8000 ni ningún puerto adicional
+- **Apache** actúa como proxy reverso via `mod_proxy` (incluido en RHEL 9)
+- **Gunicorn** corre **sin `--preload`** — cada worker importa `instana`
+  independientemente al arrancar, garantizando que el background thread del
+  SDK se inicializa correctamente y puede anunciarse al agente Instana
+- El socket UNIX `/run/cotizacion/gunicorn.sock` es creado por systemd
+  (`RuntimeDirectory=cotizacion`)
 
 ---
 
@@ -153,170 +155,125 @@ Browser → Apache :80 → (UNIX socket) → Gunicorn → Flask
 
 ### Tabla `Moneda`
 
-| Campo    | Tipo         | Descripción                                      |
-|----------|--------------|--------------------------------------------------|
-| IDMoneda | INT AI PK    | Identificador autonumérico                       |
-| Moneda   | VARCHAR(100) | Nombre descriptivo de la moneda                  |
-| Clave    | VARCHAR(50)  | Código ISO 4217 para la API BCRA (único)         |
+| Campo    | Tipo         | Descripción                                |
+|----------|--------------|--------------------------------------------|
+| IDMoneda | INT AI PK    | Identificador autonumérico                 |
+| Moneda   | VARCHAR(100) | Nombre descriptivo de la moneda            |
+| Clave    | VARCHAR(50)  | Código ISO 4217 para la API BCRA (único)   |
 
 ### Tabla `Valor`
 
-| Campo    | Tipo          | Descripción                                     |
-|----------|---------------|-------------------------------------------------|
-| IDValor  | INT AI PK     | Identificador autonumérico                      |
-| IDMoneda | INT FK        | Referencia a `Moneda.IDMoneda`                  |
-| Fecha    | DATE          | Fecha de la cotización (UNIQUE con IDMoneda)    |
-| Valor    | DECIMAL(15,4) | Cotización en pesos argentinos (ARS)            |
+| Campo    | Tipo          | Descripción                               |
+|----------|---------------|-------------------------------------------|
+| IDValor  | INT AI PK     | Identificador autonumérico                |
+| IDMoneda | INT FK        | Referencia a `Moneda.IDMoneda`            |
+| Fecha    | DATE          | Fecha de la cotización (UNIQUE+IDMoneda)  |
+| Valor    | DECIMAL(15,4) | Cotización en pesos argentinos (ARS)      |
 
 ### Monedas precargadas
 
-| # | Moneda                                    | Clave ISO |
-|---|-------------------------------------------|-----------|
-| 1 | Dólar de los Estados Unidos de América    | USD       |
-| 2 | Peso Argentino (referencia BCRA)          | ARS       |
-| 3 | Real Brasileño de Brasil                  | BRL       |
-| 4 | Euro (Zona Euro)                          | EUR       |
-| 5 | Libra Esterlina (Reino Unido)             | GBP       |
-| 6 | Yen Japonés (Japón)                       | JPY       |
-| 7 | Franco Suizo (Suiza)                      | CHF       |
-| 8 | Dólar Canadiense (Canadá)                 | CAD       |
-| 9 | Corona Sueca (Suecia)                     | SEK       |
-|10 | Dólar Australiano (Australia)             | AUD       |
+| # | Moneda                                 | ISO   |
+|---|----------------------------------------|-------|
+| 1 | Dólar de los Estados Unidos de América | USD   |
+| 2 | Peso Argentino (referencia BCRA)       | ARS   |
+| 3 | Real Brasileño de Brasil               | BRL   |
+| 4 | Euro (Zona Euro)                       | EUR   |
+| 5 | Libra Esterlina (Reino Unido)          | GBP   |
+| 6 | Yen Japonés (Japón)                    | JPY   |
+| 7 | Franco Suizo (Suiza)                   | CHF   |
+| 8 | Dólar Canadiense (Canadá)              | CAD   |
+| 9 | Corona Sueca (Suecia)                  | SEK   |
+|10 | Dólar Australiano (Australia)          | AUD   |
 
 ---
 
 ## API BCRA
 
-Endpoint utilizado:
 ```
-GET https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones/{codigo_iso}
+GET https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones/{ISO}
     ?fechadesde=YYYY-MM-DD&fechahasta=YYYY-MM-DD
 ```
 
-Respuesta:
-```json
-{
-  "status": 200,
-  "results": [
-    {
-      "fecha": "2026-09-04",
-      "detalle": [
-        { "codigoMoneda": "USD", "tipoCotizacion": 1508.0 }
-      ]
-    }
-  ]
-}
-```
-
-El campo utilizado es `tipoCotizacion` (pesos argentinos por unidad de moneda).
+Campo utilizado de la respuesta: `tipoCotizacion` (ARS por unidad de moneda).
 
 ---
 
 ## Servicio de actualización automática
 
-El timer systemd dispara `daily_updater.py` **todos los días a las 18:00 hs** (hora local de la VM).
+El timer systemd dispara `daily_updater.py` **todos los días a las 18:00 hs**.
 
 ```bash
-# Ver estado del timer
-systemctl status cotizacion-updater.timer
-
-# Ver próximas ejecuciones
-systemctl list-timers cotizacion-updater.timer
-
-# Ejecutar manualmente
-systemctl start cotizacion-updater.service
-
-# Ver logs en tiempo real
-journalctl -u cotizacion-updater.service -f
-
-# Ver log de archivo
-tail -f /var/log/cotizacion/updater.log
+systemctl status cotizacion-updater.timer       # estado del timer
+systemctl list-timers cotizacion-updater.timer  # próxima ejecución
+systemctl start cotizacion-updater.service      # ejecutar manualmente
+journalctl -u cotizacion-updater.service -f     # logs en tiempo real
 ```
 
-Si la VM estaba apagada a las 18:00, el timer ejecutará el servicio en el
-próximo arranque (`Persistent=true`).
+Si la VM estaba apagada a las 18:00, el timer ejecuta en el próximo arranque
+(`Persistent=true`).
 
 ---
 
 ## Observabilidad — Instana
 
-### Sensores activos en `itzvsi0-vmn4bn1k`
+### Sensores activos confirmados
 
-| Sensor | Componente | Versión |
-|--------|-----------|---------|
-| `sensor-host` | Servidor RHEL 9.6 | 1.2.5 |
-| `sensor-httpd` | Apache httpd PID 9601 | 1.3.4 |
-| `sensor-mariadb` | MariaDB 10.5 PID 1144 | 1.1.32 |
-| `sensor-php-fpm` | PHP-FPM | 1.4.6 |
-| `sensor-php` | PHP PID 9601 | 2.6.18 |
-| `sensor-process` | Gunicorn master + 3 workers | 1.1.63 |
-| `sensor-clr-trace` | .NET CLR runtime | 1.1.10 |
-| `discovery-eum` | End User Monitoring | 1.0.9 |
+| Sensor               | Componente                    |
+|----------------------|-------------------------------|
+| `sensor-host`        | Servidor RHEL 9.6             |
+| `sensor-httpd`       | Apache httpd                  |
+| `sensor-mariadb`     | MariaDB 10.5                  |
+| `sensor-php-fpm`     | PHP-FPM                       |
+| `sensor-python`      | Gunicorn workers (Python 3.11)|
+| `sensor-python-trace`| Trazas distribuidas Flask     |
+| `sensor-process`     | Procesos del sistema          |
 
-### Servicios Python del sistema con `INSTANA_IGNORE=true`
+### Por qué `INSTANA_IGNORE=true` en servicios del sistema
 
-Los siguientes servicios RHEL usan `/usr/bin/python3` y están excluidos de
-instrumentación mediante drop-ins systemd en `/etc/systemd/system/<svc>.service.d/instana-ignore.conf`:
+RHEL 9 usa `/usr/bin/python3` (Python 3.9) en varios servicios del sistema
+(firewalld, tuned, tuned-ppd, fail2ban, rhsm). El agente Instana intenta
+instrumentar todos los procesos Python que encuentra. Sin el SDK instalado
+en esos procesos → error `python_sensor_not_installed`.
 
-| Servicio | Binario |
-|---------|---------|
-| `firewalld` | `/usr/sbin/firewalld` |
-| `tuned` | `/usr/sbin/tuned` |
-| `tuned-ppd` | `/usr/sbin/tuned-ppd` |
-| `fail2ban` | `/usr/bin/fail2ban-server` |
-| `rhsm` | `/usr/libexec/rhsm-service` |
+Solución: drop-in systemd con `Environment="INSTANA_IGNORE=true"` en cada
+uno de esos servicios. El agente respeta esta variable y los excluye.
 
-### Application perspective Instana
+### Por qué Gunicorn corre sin `--preload`
 
-- **Nombre**: Cotizacion de Moneda
-- **ID**: `Umsn_3GjQrOdS8ws7-lPzw`
-- **Endpoint**: `ingress-orange-saas.instana.io:443`
+Con `--preload`, el SDK de Instana se inicializa en el proceso master antes
+del `fork()`. Los background threads del SDK **no sobreviven `fork()`** en
+Python → los 3 workers quedan sin poder anunciarse al agente → error
+`python_sensor_not_installed` para cada worker.
+
+Sin `--preload`, cada worker importa `instana` de forma independiente al
+arrancar → el SDK se inicializa correctamente en cada worker → los 3 aparecen
+como **Python apps instrumentadas** en la UI de Instana.
 
 ---
 
 ## Comandos útiles de operación
 
 ```bash
-# Estado de la aplicación web (Gunicorn)
-systemctl status cotizacion-gunicorn.service
+# Estado de todos los servicios
+systemctl status cotizacion-gunicorn.service cotizacion-updater.timer httpd mariadb
 
 # Reiniciar la aplicación
 systemctl restart cotizacion-gunicorn.service
 
-# Ver logs de la app en tiempo real
+# Logs en tiempo real
 tail -f /var/log/cotizacion/gunicorn_error.log
-
-# Recargar Apache
-systemctl reload httpd
-
-# Verificar MariaDB
-systemctl status mariadb
+tail -f /var/log/cotizacion/updater.log
+tail -f /var/log/httpd/cotizacion_error.log
 
 # Consultar cotizaciones en la BD
-mariadb -u app_cotizacion -p cotizacion_moneda \
+mariadb -u app_cotizacion -p'AppCotiz#2025!' cotizacion_moneda \
   -e "SELECT m.Moneda, v.Fecha, v.Valor FROM Valor v
       JOIN Moneda m USING(IDMoneda)
       ORDER BY v.Fecha DESC LIMIT 20;"
 
-# Ver todos los logs
-tail -f /var/log/httpd/cotizacion_error.log
-tail -f /var/log/cotizacion/gunicorn_error.log
-tail -f /var/log/cotizacion/updater.log
-
-# Verificar errores Instana
-grep -E "ERROR|python_sensor" /opt/instana/agent/data/log/agent.log | tail -20
-
-# Verificar sensores activos Instana
+# Verificar Instana — sensores activos
 grep "Activated" /opt/instana/agent/data/log/agent.log | tail -20
+
+# Verificar Instana — sin errores python_sensor
+grep "python_sensor" /opt/instana/agent/data/log/agent.log | tail -5
 ```
-
----
-
-## Notas de seguridad
-
-- El usuario `cotizacion` no tiene shell interactiva ni directorio home de login.
-- SELinux está activo en modo **enforcing** (por defecto en RHEL 9).
-- Las credenciales de la BD pueden externalizarse en un archivo `EnvironmentFile`
-  de systemd para entornos de producción.
-- Se recomienda habilitar TLS en el VirtualHost de Apache con un certificado
-  emitido por la CA interna de la organización.
