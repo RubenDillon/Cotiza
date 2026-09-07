@@ -74,15 +74,21 @@ systemctl restart httpd
 
 # --- Instalar Python 3.11 (incluido en RHEL 9 AppStream oficial) ---
 echo "[7/7] Instalando Python 3.11 y herramientas..."
-dnf install -y python3 python3-pip python3-devel gcc
+# IMPORTANTE: En RHEL 9, 'python3' apunta a Python 3.9 (sistema base).
+# Python 3.11 está en AppStream como 'python3.11'. Usar siempre python3.11
+# para el venv de la aplicación (requerido por Instana sensor).
+dnf install -y python3.11 python3.11-pip python3.11-devel gcc
+
+# Verificar versión instalada
+python3.11 --version
 
 # Crear directorio base de la aplicación
 mkdir -p /opt/cotizacion
 
-# Instalar entorno virtual Python para la app
-python3 -m venv /opt/cotizacion/venv
+# Crear venv explícitamente con Python 3.11
+python3.11 -m venv /opt/cotizacion/venv
 /opt/cotizacion/venv/bin/pip install --upgrade pip --quiet
-/opt/cotizacion/venv/bin/pip install flask mysql-connector-python requests gunicorn --quiet
+/opt/cotizacion/venv/bin/pip install flask mysql-connector-python requests gunicorn instana --quiet
 
 echo ""
 echo "============================================================"
@@ -91,7 +97,7 @@ echo ""
 echo " Apache : $(httpd -v | head -1)"
 echo " MariaDB: $(mariadb --version)"
 echo " PHP    : $(php --version | head -1)"
-echo " Python : $(/opt/cotizacion/venv/bin/python --version)"
+echo " Python venv: $(/opt/cotizacion/venv/bin/python --version)"
 echo " Gunicorn: $(/opt/cotizacion/venv/bin/gunicorn --version)"
 echo ""
 echo " Siguiente paso: sudo bash 03_deploy_app.sh"
