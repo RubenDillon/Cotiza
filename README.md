@@ -26,6 +26,11 @@
 │  │  18:00 hs diario     │                                   │
 │  │  daily_updater.py    │──── requests (HTTPS) ────────▶   │
 │  └──────────────────────┘     API BCRA (externa)            │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  Instana Agent  ←→  ingress-orange-saas.instana.io   │   │
+│  │  Host · MariaDb · Httpd · Process · PhpFpm · Gunicorn│   │
+│  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,6 +89,13 @@ Este script realiza 9 pasos:
 8. Instala y habilita los servicios systemd (Gunicorn + timer BCRA)
 9. Carga el schema SQL y datos iniciales en MariaDB
 
+### 3 — Instalar Instana (opcional — observabilidad)
+
+```bash
+sudo bash scripts/05_setup_instana.sh
+sudo bash scripts/06_fix_instana_python.sh
+```
+
 ---
 
 ## Estructura del proyecto
@@ -92,23 +104,30 @@ Este script realiza 9 pasos:
 cotizacion-moneda/
 ├── scripts/
 │   ├── 01_install_lamp.sh              ← Instalación LAMP (RHEL 9.6 oficial)
-│   └── 03_deploy_app.sh                ← Despliegue completo (9 pasos)
+│   ├── 03_deploy_app.sh                ← Despliegue completo (9 pasos)
+│   ├── 05_setup_instana.sh             ← Instana SDK + configuración del agente
+│   └── 06_fix_instana_python.sh        ← Drop-ins systemd: INSTANA_IGNORE para
+│                                          servicios Python del sistema RHEL
 ├── db/
 │   ├── 02_schema_and_seed.sql          ← Schema + 10 monedas + 10 días de valores
 │   └── 04_fix_claves_iso.sql           ← Migración de claves numéricas a ISO 4217
 ├── app/
-│   ├── app.py                          ← Aplicación Flask (frontend)
-│   ├── wsgi.py                         ← Punto de entrada WSGI (reserva/referencia)
+│   ├── app.py                          ← Aplicación Flask (frontend + import instana)
+│   ├── wsgi.py                         ← Punto de entrada WSGI
+│   ├── gunicorn.conf.py                ← Configuración Gunicorn (hooks Instana)
 │   ├── cotizacion.conf                 ← VirtualHost Apache (proxy reverso)
+│   ├── instana-status.conf             ← mod_status: acceso local para Instana
 │   ├── templates/
 │   │   └── index.html                  ← Template Jinja2 (layout 2 paneles)
 │   └── static/css/
 │       └── styles.css                  ← Estilos (paleta BCRA azul)
-└── services/
-    ├── daily_updater.py                ← Script Python: consulta BCRA y guarda valores
-    ├── cotizacion-gunicorn.service     ← Servicio systemd Gunicorn (siempre corriendo)
-    ├── cotizacion-updater.service      ← Unidad systemd oneshot (actualiza cotizaciones)
-    └── cotizacion-updater.timer        ← Timer systemd (18:00 hs diario)
+├── services/
+│   ├── daily_updater.py                ← Script Python: consulta BCRA y guarda valores
+│   ├── cotizacion-gunicorn.service     ← Servicio systemd Gunicorn (3 workers, --preload)
+│   ├── cotizacion-updater.service      ← Unidad systemd oneshot (actualiza cotizaciones)
+│   └── cotizacion-updater.timer        ← Timer systemd (18:00 hs diario, Persistent=true)
+└── instana/
+    └── configuration.yaml             ← Plugin MariaDB + status_url Apache + host tags
 ```
 
 ---
@@ -219,6 +238,42 @@ próximo arranque (`Persistent=true`).
 
 ---
 
+## Observabilidad — Instana
+
+### Sensores activos en `itzvsi0-vmn4bn1k`
+
+| Sensor | Componente | Versión |
+|--------|-----------|---------|
+| `sensor-host` | Servidor RHEL 9.6 | 1.2.5 |
+| `sensor-httpd` | Apache httpd PID 9601 | 1.3.4 |
+| `sensor-mariadb` | MariaDB 10.5 PID 1144 | 1.1.32 |
+| `sensor-php-fpm` | PHP-FPM | 1.4.6 |
+| `sensor-php` | PHP PID 9601 | 2.6.18 |
+| `sensor-process` | Gunicorn master + 3 workers | 1.1.63 |
+| `sensor-clr-trace` | .NET CLR runtime | 1.1.10 |
+| `discovery-eum` | End User Monitoring | 1.0.9 |
+
+### Servicios Python del sistema con `INSTANA_IGNORE=true`
+
+Los siguientes servicios RHEL usan `/usr/bin/python3` y están excluidos de
+instrumentación mediante drop-ins systemd en `/etc/systemd/system/<svc>.service.d/instana-ignore.conf`:
+
+| Servicio | Binario |
+|---------|---------|
+| `firewalld` | `/usr/sbin/firewalld` |
+| `tuned` | `/usr/sbin/tuned` |
+| `tuned-ppd` | `/usr/sbin/tuned-ppd` |
+| `fail2ban` | `/usr/bin/fail2ban-server` |
+| `rhsm` | `/usr/libexec/rhsm-service` |
+
+### Application perspective Instana
+
+- **Nombre**: Cotizacion de Moneda
+- **ID**: `Umsn_3GjQrOdS8ws7-lPzw`
+- **Endpoint**: `ingress-orange-saas.instana.io:443`
+
+---
+
 ## Comandos útiles de operación
 
 ```bash
@@ -247,6 +302,12 @@ mariadb -u app_cotizacion -p cotizacion_moneda \
 tail -f /var/log/httpd/cotizacion_error.log
 tail -f /var/log/cotizacion/gunicorn_error.log
 tail -f /var/log/cotizacion/updater.log
+
+# Verificar errores Instana
+grep -E "ERROR|python_sensor" /opt/instana/agent/data/log/agent.log | tail -20
+
+# Verificar sensores activos Instana
+grep "Activated" /opt/instana/agent/data/log/agent.log | tail -20
 ```
 
 ---
