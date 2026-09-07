@@ -25,7 +25,10 @@ Environment="INSTANA_SERVICE_NAME=cotizacion-moneda-web"
 Environment="INSTANA_AGENT_HOST=localhost"
 Environment="INSTANA_AGENT_PORT=42699"
 Environment="INSTANA_MONITORING=true"
-# Directorio temporal con permisos para que el sensor Python escriba su socket
+# Instana v3.x crea su socket de control en $HOME — el usuario 'cotizacion'
+# fue creado con --no-create-home, por lo que $HOME no existe. Redirigir a /tmp
+# para evitar "Permission denied: '/home/cotizacion'".
+Environment="HOME=/tmp"
 Environment="TMPDIR=/tmp"
 
 # Gunicorn: 3 workers, preload + socket UNIX para comunicarse con Apache
