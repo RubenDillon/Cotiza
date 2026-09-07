@@ -3,42 +3,37 @@
 # Ubicación en la VM: /opt/instana/agent/etc/instana/configuration.yaml
 # =============================================================================
 
-# --- Identificación del host ---
-host:
-  tags:
-    - app:cotizacion-moneda
-    - env:production
-    - stack:lamp
-    - os:rhel9
-
-# --- Zona del host (aparece en Instana como agrupación) ---
+# --- Identificación y tags del host ---
 com.instana.plugin.host:
   tags:
-    - 'cotizacion-moneda'
+    - 'app:cotizacion-moneda'
+    - 'env:production'
+    - 'stack:lamp'
+    - 'os:rhel9'
+
+# --- Ignorar procesos del sistema RHEL que no tienen sensor Instana ---
+# Esto elimina los errores python_sensor_not_installed de los servicios
+# del sistema operativo que usan /usr/bin/python3
+com.instana.ignore.processes:
+  - 'firewalld'
+  - 'tuned'
+  - 'tuned-ppd'
+  - 'fail2ban-server'
+  - 'rhsm-service'
 
 # --- Apache HTTP Server ---
+# mod_status debe estar habilitado en /server-status (ya configurado)
 com.instana.plugin.apachehttpd:
   enabled: true
-  # Habilitar mod_status en Apache para que Instana lea métricas
-  # (ver instrucciones en README de Instana)
 
-# --- MariaDB / MySQL ---
+# --- MariaDB (plugin mysql del agente Instana) ---
 com.instana.plugin.mysql:
   enabled: true
   instances:
     - host: 'localhost'
-      port: 3306
+      port: '3306'
       user: 'app_cotizacion'
       password: 'AppCotiz#2025!'
-      database: 'cotizacion_moneda'
-
-# --- Python (Flask + Gunicorn) ---
-# Solo instrumentar procesos Python del venv de la aplicación.
-# Los procesos del sistema RHEL (firewalld, tuned, fail2ban, rhsm-service)
-# usan /usr/bin/python3 y deben ser excluidos para evitar errores
-# python_sensor_not_installed.
-com.instana.plugin.python:
-  enabled: true
 
 # --- Tracing distribuido ---
 com.instana.tracing:
@@ -46,18 +41,3 @@ com.instana.tracing:
   extra-http-headers:
     - 'x-request-id'
     - 'x-forwarded-for'
-
-# --- Métricas de procesos ---
-# Solo monitorear los procesos de la aplicación, excluir los del sistema RHEL
-com.instana.plugin.process:
-  processes:
-    - 'httpd'
-    - 'gunicorn'
-    - 'mariadbd'
-  # Excluir procesos Python del sistema RHEL que no tienen el sensor instana
-  ignore-processes:
-    - 'firewalld'
-    - 'tuned'
-    - 'tuned-ppd'
-    - 'fail2ban-server'
-    - 'rhsm-service'

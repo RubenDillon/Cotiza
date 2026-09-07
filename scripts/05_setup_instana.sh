@@ -77,14 +77,7 @@ cp "${SRC_DIR}/app/app.py" "${APP_DIR}/app/app.py"
 chown cotizacion:cotizacion "${APP_DIR}/app/app.py"
 chmod 644 "${APP_DIR}/app/app.py"
 
-# Variables de entorno para Instana en el servicio Gunicorn
-GUNICORN_SERVICE="/etc/systemd/system/cotizacion-gunicorn.service"
-
-# Agregar variables de Instana si no están ya
-if ! grep -q "INSTANA_SERVICE_NAME" "${GUNICORN_SERVICE}"; then
-    sed -i '/Environment="DB_NAME/a Environment="INSTANA_SERVICE_NAME=cotizacion-moneda-web"\nEnvironment="INSTANA_AGENT_HOST=localhost"\nEnvironment="INSTANA_AGENT_PORT=42699"' \
-        "${GUNICORN_SERVICE}"
-fi
+# El service file ya incluye las variables INSTANA_* — no hace falta parchear
 
 systemctl daemon-reload
 systemctl restart httpd
