@@ -121,11 +121,13 @@ cotizacion-moneda/
 │   ├── 02_schema_and_seed.sql   ← Schema + 10 monedas + 10 días de valores
 │   └── 04_fix_claves_iso.sql    ← Migración (referencia histórica)
 ├── app/
-│   ├── app.py                   ← Flask app (import instana al inicio)
+│   ├── app.py                   ← Flask app (manejo de errores BD + import instana)
 │   ├── wsgi.py                  ← Punto de entrada WSGI
 │   ├── gunicorn.conf.py         ← Config Gunicorn (sin --preload)
 │   ├── cotizacion.conf          ← VirtualHost Apache proxy reverso
-│   ├── templates/index.html     ← Template Jinja2 (layout 2 paneles)
+│   ├── templates/
+│   │   ├── index.html           ← Template Jinja2 (layout 2 paneles)
+│   │   └── error_db.html        ← Página de error amigable (MariaDB no disponible)
 │   └── static/css/styles.css   ← Estilos (paleta azul BCRA)
 ├── services/
 │   ├── daily_updater.py             ← Actualiza cotizaciones desde API BCRA
@@ -258,6 +260,61 @@ tail -f /var/log/cotizacion/traffic_simulator.log    # log de sesiones
 systemctl stop cotizacion-traffic.service            # detener temporalmente
 systemctl start cotizacion-traffic.service           # reiniciar
 ```
+
+---
+
+## Manejo de errores — Base de datos no disponible
+
+### Contexto
+
+Durante la operación normal, si MariaDB se cae o se reinicia, Flask intentaba
+conectar a `localhost:3306`, recibía `ECONNREFUSED` en ~1 ms y lanzaba una
+excepción no manejada que resultaba en un **HTTP 500 genérico**. En Instana
+esto aparecía como una falla de la aplicación, sin indicar que la causa real
+era la base de datos.
+
+### Solución implementada
+
+`app.py` ahora intercepta los errores de conexión de MariaDB
+(`errno 2002, 2003, 2006, 2013`) y los convierte en respuestas **HTTP 503**
+controladas, mostrando la página `error_db.html`.
+
+```
+MariaDB caído
+     ↓
+Flask recibe DBError (errno 2003 — Can't connect to localhost:3306)
+     ↓
+_db_unavailable(e) == True
+     ↓
+abort(503) → @app.errorhandler(503) → render_template("error_db.html")
+     ↓
+HTTP 503 con página amigable al usuario
+```
+
+### Página de error (`error_db.html`)
+
+Cuando MariaDB no está disponible el usuario ve una página con:
+- Explicación clara de qué ocurrió
+- Indicación de que el servicio se restaurará automáticamente
+- Botón **"Reintentar"** para recargar cuando MariaDB vuelva
+
+### Diferencia en Instana antes y después
+
+| Situación | Antes | Después |
+|---|---|---|
+| MariaDB caído | HTTP **500** — falla de app | HTTP **503** — servicio no disponible |
+| Duración de la traza | ~1 ms (excepción inmediata) | ~1 ms (misma velocidad de fallo) |
+| Mensaje en Instana | Error genérico sin contexto | 503 — indica claramente que es BD |
+| `/health` endpoint | `{"status":"error","db":"disconnected"}` | Igual + campo `"detail"` con el error exacto |
+
+### Códigos de error de MariaDB manejados
+
+| errno | Descripción |
+|---|---|
+| `2002` | Can't connect to local server through socket |
+| `2003` | Can't connect to MySQL server on 'host:port' |
+| `2006` | MySQL server has gone away |
+| `2013` | Lost connection to MySQL server during query |
 
 ---
 
