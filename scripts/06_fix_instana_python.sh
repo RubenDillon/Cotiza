@@ -67,8 +67,36 @@ for SVC in "${SERVICES[@]}"; do
 done
 
 echo ""
+echo "Esperando 5 segundos para que los procesos levanten..."
+sleep 5
+
+echo ""
 echo "============================================================"
-echo " ✔ Drop-ins creados. Verificar en 2 min en Instana UI."
+echo " Verificación: variables de entorno en procesos Python"
+echo "============================================================"
+for SVC in "${SERVICES[@]}"; do
+    PID=$(systemctl show -p MainPID "${SVC}.service" 2>/dev/null | cut -d= -f2)
+    if [[ -z "${PID}" || "${PID}" == "0" ]]; then
+        echo "  ⚠ ${SVC}: sin PID (no activo)"
+        continue
+    fi
+    VAL=$(cat "/proc/${PID}/environ" 2>/dev/null | tr '\0' '\n' | grep "^INSTANA_IGNORE" || echo "NO ENCONTRADO")
+    echo "  PID ${PID} (${SVC}): ${VAL}"
+done
+
+# Verificar también Gunicorn master
+GUNI_PID=$(systemctl show -p MainPID "cotizacion-gunicorn.service" 2>/dev/null | cut -d= -f2)
+if [[ -n "${GUNI_PID}" && "${GUNI_PID}" != "0" ]]; then
+    VAL=$(cat "/proc/${GUNI_PID}/environ" 2>/dev/null | tr '\0' '\n' | grep "^INSTANA_MONITORING" || echo "NO ENCONTRADO")
+    echo "  PID ${GUNI_PID} (gunicorn master): ${VAL}"
+fi
+
+echo ""
+echo "============================================================"
+echo " ✔ Listo. Esperar ~2 minutos y verificar en Instana UI."
 echo " Los errores python_sensor_not_installed de /usr/bin/python3"
 echo " deben desaparecer del agente itzvsi0-vmn4bn1k."
 echo "============================================================"
+echo ""
+echo "Log en tiempo real del agente Instana (Ctrl+C para salir):"
+echo "  tail -f /opt/instana/agent/data/log/agent.log | grep -E 'python|sensor|error'"
