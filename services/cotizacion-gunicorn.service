@@ -31,13 +31,12 @@ Environment="INSTANA_MONITORING=true"
 Environment="HOME=/tmp"
 Environment="TMPDIR=/tmp"
 
-# Gunicorn: 3 workers, preload + socket UNIX para comunicarse con Apache
-# --preload: carga la app en el master antes de forkear — Instana se
-#            inicializa una vez y los workers heredan la instrumentación
+# Gunicorn: 3 workers SIN --preload para que cada worker importe instana
+# de forma independiente. Con --preload el background thread del SDK no
+# sobrevive el fork() y los workers no pueden anunciarse al agente Instana.
 ExecStart=/opt/cotizacion/venv/bin/gunicorn \
     --config /opt/cotizacion/app/gunicorn.conf.py \
     --workers 3 \
-    --preload \
     --bind unix:/run/cotizacion/gunicorn.sock \
     --access-logfile /var/log/cotizacion/gunicorn_access.log \
     --error-logfile  /var/log/cotizacion/gunicorn_error.log \
