@@ -255,10 +255,49 @@ GET /moneda/1    ← cambia a otra moneda (ej: USD)
 
 ```bash
 systemctl status cotizacion-traffic.service          # estado del simulador
-journalctl -u cotizacion-traffic.service -f          # logs en tiempo real
-tail -f /var/log/cotizacion/traffic_simulator.log    # log de sesiones
+journalctl -u cotizacion-traffic.service -f          # logs en tiempo real (recomendado)
+tail -f /var/log/cotizacion/traffic_simulator.log    # log de sesiones en archivo
 systemctl stop cotizacion-traffic.service            # detener temporalmente
 systemctl start cotizacion-traffic.service           # reiniciar
+```
+
+### Seguimiento en tiempo real
+
+El comando más útil para ver qué está haciendo el simulador en este momento:
+
+```bash
+journalctl -u cotizacion-traffic.service -f
+```
+
+Ejemplo de salida:
+
+```
+Sep 07 18:42:01 itzvsi0-vmn4bn1k cotizacion-traffic[18955]: 2026-09-07 18:42:01 [INFO] Sesión 0047 | GET / → 200 (0.03s) [Mozilla/5.0 (Windows NT 10.0...]
+Sep 07 18:42:04 itzvsi0-vmn4bn1k cotizacion-traffic[18955]: 2026-09-07 18:42:04 [INFO] Sesión 0047 | GET /moneda/3 → 200 (0.07s)
+Sep 07 18:42:09 itzvsi0-vmn4bn1k cotizacion-traffic[18955]: 2026-09-07 18:42:09 [INFO] Sesión 0047 | GET /moneda/8 → 200 (0.06s)
+Sep 07 18:42:14 itzvsi0-vmn4bn1k cotizacion-traffic[18955]: 2026-09-07 18:42:14 [INFO] Sesión 0047 completada — 147 req totales — rate 9.8 req/min — próxima en 5.3s
+Sep 07 18:42:19 itzvsi0-vmn4bn1k cotizacion-traffic[18955]: 2026-09-07 18:42:19 [INFO] Sesión 0048 | GET / → 200 (0.03s) [Mozilla/5.0 (iPhone; CPU iPhone...]
+Sep 07 18:42:24 itzvsi0-vmn4bn1k cotizacion-traffic[18955]: 2026-09-07 18:42:24 [INFO] Sesión 0048 | GET /moneda/1 → 200 (0.06s)
+```
+
+Cada línea muestra:
+- **Número de sesión** — sesión correlativa desde que arrancó el servicio
+- **Endpoint visitado** — `GET /` (lista) o `GET /moneda/<id>` (detalle)
+- **Código HTTP** — `200` normal, `503` si MariaDB no está disponible
+- **Tiempo de respuesta** — en segundos; valores normales: `0.03s` para `/`, `0.06s` para `/moneda/<id>`
+- **User-Agent parcial** — el navegador simulado en esa sesión
+- **Resumen de sesión** — requests totales acumulados, rate actual (req/min) y pausa hasta la próxima sesión
+
+### Detectar problemas con el simulador
+
+Si MariaDB se cae, el simulador lo refleja inmediatamente:
+
+```bash
+# Ver solo los errores del simulador
+journalctl -u cotizacion-traffic.service -f | grep -v "200"
+
+# Contar errores en los últimos 10 minutos
+journalctl -u cotizacion-traffic.service --since "10 minutes ago" | grep -c "→ [^2]"
 ```
 
 ---
