@@ -43,7 +43,7 @@ cd Cotiza/cotizacion-moneda
 # 2. Instalar stack LAMP + Python 3.11 + venv con todas las dependencias
 sudo bash scripts/01_install_lamp.sh
 
-# 3. Desplegar la aplicación + servicios systemd + Instana drops-ins
+# 3. Desplegar la aplicación + servicios systemd + Instana drops-ins + simulador de tráfico
 sudo bash scripts/03_deploy_app.sh
 
 # 4. Instalar y configurar el agente Instana (opcional)
@@ -92,7 +92,10 @@ sudo bash scripts/05_setup_instana.sh
 7. Crea **drop-ins systemd** con `INSTANA_IGNORE=true` para los servicios del
    sistema RHEL que usan `/usr/bin/python3` (firewalld, tuned, tuned-ppd,
    fail2ban, rhsm) — evita errores `python_sensor_not_installed` en Instana
-8. Instala y habilita: `cotizacion-gunicorn.service` + `cotizacion-updater.timer`
+8. Instala y habilita:
+   - `cotizacion-gunicorn.service` — servidor Flask (3 workers)
+   - `cotizacion-updater.timer` — actualización BCRA a las 18:00 hs
+   - `cotizacion-traffic.service` — simulador de tráfico 24x7 (~10 req/min)
 9. Carga schema SQL + ejecuta primera actualización desde la API BCRA
 
 ### `05_setup_instana.sh` — Agente Instana
@@ -125,10 +128,12 @@ cotizacion-moneda/
 │   ├── templates/index.html     ← Template Jinja2 (layout 2 paneles)
 │   └── static/css/styles.css   ← Estilos (paleta azul BCRA)
 ├── services/
-│   ├── daily_updater.py         ← Actualiza cotizaciones desde API BCRA
-│   ├── cotizacion-gunicorn.service  ← Gunicorn (HOME=/tmp, 3 workers)
+│   ├── daily_updater.py             ← Actualiza cotizaciones desde API BCRA
+│   ├── traffic_simulator.py         ← Simulador de tráfico (~10 req/min, 24x7)
+│   ├── cotizacion-gunicorn.service  ← Gunicorn (HOME=/tmp, 3 workers, sin --preload)
 │   ├── cotizacion-updater.service   ← oneshot: ejecuta daily_updater.py
-│   └── cotizacion-updater.timer     ← Timer: 18:00 hs, Persistent=true
+│   ├── cotizacion-updater.timer     ← Timer: 18:00 hs, Persistent=true
+│   └── cotizacion-traffic.service   ← Simulador de tráfico como daemon systemd
 └── instana/
     └── configuration.yaml       ← Plugin MariaDB + Apache status_url + tags
 ```
@@ -214,6 +219,48 @@ Si la VM estaba apagada a las 18:00, el timer ejecuta en el próximo arranque
 
 ---
 
+## Simulador de tráfico
+
+`cotizacion-traffic.service` corre **las 24 horas** generando tráfico realista
+contra la aplicación. Simula usuarios que navegan la lista de monedas y
+consultan cotizaciones históricas.
+
+### Comportamiento de cada sesión simulada
+
+```
+GET /            ← usuario abre la app
+[pausa 2-8s]     ← "lee" la lista de monedas
+GET /moneda/3    ← elige una moneda aleatoria (ej: BRL)
+[pausa 2-8s]     ← "lee" las cotizaciones
+GET /moneda/1    ← cambia a otra moneda (ej: USD)
+[pausa 2-8s]
+...
+```
+
+### Parámetros de carga
+
+| Parámetro | Valor |
+|---|---|
+| Rate objetivo | ~10 requests/minuto |
+| Monedas por sesión | 1–4 (40 % visita 1, 35 % visita 2, 15 % visita 3, 10 % visita 4) |
+| Pausa entre páginas | 2–8 segundos (simula lectura humana) |
+| User-Agents | 6 variados (Chrome, Safari, Firefox, iOS, Android) |
+| Log | `/var/log/cotizacion/traffic_simulator.log` |
+| Reinicio automático | `Restart=always`, backoff 10 s |
+| Instana | `INSTANA_IGNORE=true` — excluido del sensor Python (es carga sintética) |
+
+### Comandos de gestión
+
+```bash
+systemctl status cotizacion-traffic.service          # estado del simulador
+journalctl -u cotizacion-traffic.service -f          # logs en tiempo real
+tail -f /var/log/cotizacion/traffic_simulator.log    # log de sesiones
+systemctl stop cotizacion-traffic.service            # detener temporalmente
+systemctl start cotizacion-traffic.service           # reiniciar
+```
+
+---
+
 ## Observabilidad — Instana
 
 ### Sensores activos confirmados
@@ -255,7 +302,8 @@ como **Python apps instrumentadas** en la UI de Instana.
 
 ```bash
 # Estado de todos los servicios
-systemctl status cotizacion-gunicorn.service cotizacion-updater.timer httpd mariadb
+systemctl status cotizacion-gunicorn.service cotizacion-updater.timer \
+                 cotizacion-traffic.service httpd mariadb
 
 # Reiniciar la aplicación
 systemctl restart cotizacion-gunicorn.service
