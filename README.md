@@ -33,7 +33,7 @@
 
 ---
 
-## Instalación completa desde cero — 3 comandos
+## Instalación completa desde cero
 
 ```bash
 # 1. Clonar el repositorio
@@ -48,6 +48,9 @@ sudo bash scripts/03_deploy_app.sh
 
 # 4. Instalar y configurar el agente Instana (opcional)
 sudo bash scripts/05_setup_instana.sh
+
+# 5. Ajustar resiliencia y tuning de MariaDB (opcional / recomendado)
+sudo bash scripts/08_fix_mariadb_resilience.sh
 ```
 
 ---
@@ -107,6 +110,13 @@ sudo bash scripts/05_setup_instana.sh
 5. Reinicia todos los servicios
 6. Verifica el estado final
 
+### `08_fix_mariadb_resilience.sh` — Resiliencia y Tuning de MariaDB
+
+1. Diagnostica reinicios, eventos OOM y uso de memoria en las últimas 24 hs
+2. Configura `innodb_buffer_pool_size` dinámicamente al 40% de la RAM disponible
+3. Configura timeouts (`wait_timeout=600`) y detección de deadlocks
+4. Aplica drop-in systemd (`Restart=always`, `RestartSec=5s`, hasta 10 reintentos)
+
 ---
 
 ## Estructura del proyecto
@@ -114,9 +124,11 @@ sudo bash scripts/05_setup_instana.sh
 ```
 cotizacion-moneda/
 ├── scripts/
-│   ├── 01_install_lamp.sh       ← LAMP + Python 3.11 + venv con instana
-│   ├── 03_deploy_app.sh         ← App + Apache + systemd + drop-ins Instana
-│   └── 05_setup_instana.sh      ← Agente Instana + configuration.yaml
+│   ├── 01_install_lamp.sh            ← LAMP + Python 3.11 + venv con instana
+│   ├── 03_deploy_app.sh              ← App + Apache + systemd + drop-ins Instana
+│   ├── 05_setup_instana.sh           ← Agente Instana + configuration.yaml
+│   ├── 08_fix_mariadb_resilience.sh  ← Diagnóstico y resiliencia de MariaDB
+│   └── mariadb-resilience.conf       ← Plantilla drop-in systemd
 ├── db/
 │   ├── 02_schema_and_seed.sql   ← Schema + 10 monedas + 10 días de valores
 │   └── 04_fix_claves_iso.sql    ← Migración (referencia histórica)
